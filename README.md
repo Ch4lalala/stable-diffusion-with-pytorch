@@ -1,19 +1,20 @@
 # RoomMorph AI
 
-RoomMorph AI is a focused Gradio application that turns a room photograph into
-an interior-design concept. It is built on this repository's educational Stable
-Diffusion 1.5 inference implementation, so the application uses the custom CLIP,
-VAE, U-Net, and DDPM code under `sd/` instead of hiding inference behind a
-third-party diffusion pipeline.
+RoomMorph AI is a focused Gradio application that redesigns a room photograph or
+generates a new interior concept from text. It is built on this repository's
+educational Stable Diffusion 1.5 inference implementation, so the application
+uses the custom CLIP, VAE, U-Net, and DDPM code under `sd/` instead of hiding
+inference behind a third-party diffusion pipeline.
 
 This project performs inference with pretrained Stable Diffusion 1.5 weights. It
 does **not** train Stable Diffusion from scratch. The practical goal is to help a
-user explore a visual direction for an existing room while keeping the model
-internals understandable for an AI Engineer portfolio.
+user explore an interior visual direction while keeping the model internals
+understandable for an AI Engineer portfolio.
 
-## MVP Features
+## Features
 
 - Image-to-image generation from an uploaded PNG, JPG, or JPEG room photo.
+- Text-to-image generation from positive and negative room prompts.
 - Japandi, Minimalist, Scandinavian, Industrial, Modern, and Cozy presets.
 - Optional room-specific design instruction.
 - Safe controls for strength, inference steps, CFG, seed, and 256/512 resolution.
@@ -23,8 +24,9 @@ internals understandable for an AI Engineer portfolio.
 - Timestamped outputs plus runtime and generation metadata.
 - Checkpoint-free UI smoke-test mode for development and CI.
 
-The first release is image-to-image only. It does not include text-to-image,
-inpainting, ControlNet, authentication, a database, payments, or an LLM.
+Phase 2 provides separate image-to-image and text-to-image tabs backed by one
+cached model and tokenizer instance. It does not include inpainting, ControlNet,
+authentication, a database, payments, or an LLM.
 
 ## Architecture
 
@@ -35,12 +37,19 @@ Room image + design instruction
              -> CLIP-conditioned U-Net denoising with DDPM
              -> VAE decoder
              -> redesigned room concept
+
+Style preset + positive/negative prompts
+             -> random latent
+             -> CLIP-conditioned U-Net denoising with DDPM
+             -> VAE decoder
+             -> new room concept
 ```
 
-The application resizes and center-crops the input with Pillow, builds a concise
-style prompt, and calls the real `sd/pipeline.py` image-to-image path. Models are
-loaded once onto CPU and each component is moved to the runtime device only when
-needed. Existing model mathematics and checkpoint conversion remain unchanged.
+The application resizes and center-crops image inputs with Pillow, builds concise
+style prompts, and calls the real `sd/pipeline.py` for both modes. Models and the
+tokenizer are loaded once onto CPU and reused by both tabs; each component is
+moved to the runtime device only when needed. Existing model mathematics and
+checkpoint conversion remain unchanged.
 
 ## Repository Structure
 
@@ -124,9 +133,10 @@ python app.py
 Open the local URL printed by Gradio, normally `http://127.0.0.1:7860`. The
 checkpoint is loaded once when the first valid generation is requested. A
 successful result is displayed in the UI and saved as a collision-resistant PNG
-under `outputs/`.
+under `outputs/`. Text-to-image filenames begin with `txt2img_`; image-to-image
+filenames begin with `roommorph_`.
 
-Default settings are intentionally lightweight:
+Image-to-image defaults are intentionally lightweight:
 
 ```text
 resolution:       256 x 256
@@ -141,6 +151,10 @@ sampler:          DDPM
 CFG commonly improves prompt adherence but roughly doubles the U-Net batch for
 this pipeline, increasing compute and memory use.
 
+Text-to-image defaults to 256 x 256, 10 inference steps, CFG scale 7.5, and seed
+42. Its metadata includes the effective style-expanded prompt, negative prompt,
+runtime device, parameters, elapsed time, and saved filename.
+
 ## Smoke-Test Mode
 
 Construct and launch the complete UI without loading or requiring the
@@ -150,9 +164,9 @@ checkpoint:
 ROOMMORPH_SKIP_MODEL_LOAD=1 python app.py
 ```
 
-The interface clearly marks inference as disabled. Generate validates the input
-and settings, then returns a disabled-mode message without fabricating an AI
-result.
+The interface clearly marks inference as disabled. Both Generate actions
+validate their inputs and settings, then return a disabled-mode message without
+fabricating an AI result.
 
 For a non-blocking import check:
 
