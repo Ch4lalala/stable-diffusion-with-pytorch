@@ -49,7 +49,8 @@ The application resizes and center-crops image inputs with Pillow, builds concis
 style prompts, and calls the real `sd/pipeline.py` for both modes. Models and the
 tokenizer are loaded once onto CPU and reused by both tabs; each component is
 moved to the runtime device only when needed. Existing model mathematics and
-checkpoint conversion remain unchanged.
+checkpoint conversion remain unchanged. `app.py` owns only the Gradio UI and
+event wiring; reusable runtime and generation services live under `roommorph/`.
 
 ## Repository Structure
 
@@ -62,6 +63,13 @@ checkpoint conversion remain unchanged.
 ├── images/                       # local notebook inputs, ignored
 ├── outputs/                      # ordinary generations, ignored
 ├── requirements.txt
+├── roommorph/
+│   ├── config.py                 # paths, limits, and runtime devices
+│   ├── exceptions.py             # shared application exceptions
+│   ├── generation.py             # img2img and txt2img callbacks
+│   ├── image_utils.py            # preprocessing and output files
+│   ├── model_manager.py          # single lazy model/tokenizer cache
+│   └── prompts.py                # style presets and prompt builders
 ├── sd/
 │   ├── attention.py
 │   ├── clip.py
