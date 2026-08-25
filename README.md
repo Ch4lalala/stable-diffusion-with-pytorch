@@ -1,59 +1,97 @@
-# Stable Diffusion Demo
+# RoomMorph AI
 
-Implementasi Stable Diffusion sederhana dengan PyTorch. Repo ini memuat komponen inti model di folder `sd/`, loader untuk checkpoint Stable Diffusion v1.5, serta notebook demo untuk text-to-image dan image-to-image.
+RoomMorph AI is a focused Gradio application that turns a room photograph into
+an interior-design concept. It is built on this repository's educational Stable
+Diffusion 1.5 inference implementation, so the application uses the custom CLIP,
+VAE, U-Net, and DDPM code under `sd/` instead of hiding inference behind a
+third-party diffusion pipeline.
 
-## Struktur Project
+This project performs inference with pretrained Stable Diffusion 1.5 weights. It
+does **not** train Stable Diffusion from scratch. The practical goal is to help a
+user explore a visual direction for an existing room while keeping the model
+internals understandable for an AI Engineer portfolio.
+
+## MVP Features
+
+- Image-to-image generation from an uploaded PNG, JPG, or JPEG room photo.
+- Japandi, Minimalist, Scandinavian, Industrial, Modern, and Cozy presets.
+- Optional room-specific design instruction.
+- Safe controls for strength, inference steps, CFG, seed, and 256/512 resolution.
+- CUDA, Apple MPS, and CPU device selection in that order.
+- Lazy singleton model loading and one-generation-at-a-time queueing.
+- Aspect-ratio-preserving crop, RGB conversion, and transparent PNG handling.
+- Timestamped outputs plus runtime and generation metadata.
+- Checkpoint-free UI smoke-test mode for development and CI.
+
+The first release is image-to-image only. It does not include text-to-image,
+inpainting, ControlNet, authentication, a database, payments, or an LLM.
+
+## Architecture
+
+```text
+Room image + design instruction
+             -> VAE encoder
+             -> noisy latent
+             -> CLIP-conditioned U-Net denoising with DDPM
+             -> VAE decoder
+             -> redesigned room concept
+```
+
+The application resizes and center-crops the input with Pillow, builds a concise
+style prompt, and calls the real `sd/pipeline.py` image-to-image path. Models are
+loaded once onto CPU and each component is moved to the runtime device only when
+needed. Existing model mathematics and checkpoint conversion remain unchanged.
+
+## Repository Structure
 
 ```text
 .
-├── data/
-│   ├── v1-5-pruned-emaonly.ckpt
-│   ├── vocab.json
-│   └── merges.txt
-├── images/
-│   └── dog.png
-├── outputs/
+├── app.py
+├── assets/
+│   └── README.md
+├── data/                         # local tokenizer and weights, ignored
+├── images/                       # local notebook inputs, ignored
+├── outputs/                      # ordinary generations, ignored
+├── requirements.txt
 ├── sd/
-│   ├── demo.ipynb
-│   ├── pipeline.py
-│   ├── model_loader.py
-│   ├── model_converter.py
+│   ├── attention.py
 │   ├── clip.py
+│   ├── ddpm.py
+│   ├── decoder.py
+│   ├── demo.ipynb
 │   ├── diffusion.py
 │   ├── encoder.py
-│   ├── decoder.py
-│   ├── ddpm.py
-│   └── attention.py
+│   ├── model_converter.py
+│   ├── model_loader.py
+│   └── pipeline.py
 └── README.md
 ```
 
-Folder `data/`, `images/`, dan `outputs/` di-ignore oleh git karena berisi file besar, input lokal, dan hasil generate.
+## Local Installation
 
-## Dependency
-
-Gunakan Python/Jupyter kernel yang sama saat install dan menjalankan notebook. Di setup ini Jupyter memakai Anaconda `base`:
-
-```bash
-/opt/anaconda3/bin/python -m pip install torch numpy pillow tqdm transformers pytorch-lightning jupyter ipykernel
-```
-
-Kalau sudah punya sebagian package, cukup install yang hilang:
+Python 3.10 or newer is recommended. Create an isolated environment from the
+repository root:
 
 ```bash
-/opt/anaconda3/bin/python -m pip install transformers pytorch-lightning
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-Package penting:
+When using an existing Conda environment, install and run with the same Python
+interpreter so Jupyter and Gradio see the same packages:
 
-- `torch`: menjalankan model.
-- `transformers`: memuat `CLIPTokenizer`.
-- `pytorch-lightning`: dibutuhkan saat `torch.load` membaca checkpoint `.ckpt` lama.
-- `pillow`: membaca dan menyimpan gambar.
-- `tqdm`: progress bar inference.
+```bash
+python -m pip install -r requirements.txt
+```
 
-## File Model Yang Wajib Ada
+`pytorch-lightning` is required because the legacy `.ckpt` may reference it
+while `torch.load` deserializes the trusted checkpoint.
 
-Pastikan file berikut ada di folder `data/`:
+## Required Model Files
+
+Put these local files in `data/`:
 
 ```text
 data/v1-5-pruned-emaonly.ckpt
@@ -61,122 +99,149 @@ data/vocab.json
 data/merges.txt
 ```
 
-Notebook akan gagal kalau salah satu file itu tidak ada.
-
-Catatan keamanan: `model_converter.py` memakai `torch.load(..., weights_only=False)` untuk membaca checkpoint. Jalankan hanya checkpoint yang kamu percaya.
-
-## Cara Menjalankan Demo
-
-Dari root project:
+The checkpoint is about 4.27 GB and must never be committed. To keep it outside
+the repository, set an absolute or repository-relative path:
 
 ```bash
-cd "/Users/acit/Documents/MyWork/Stabel Diffusion"
-/opt/anaconda3/bin/jupyter notebook sd/demo.ipynb
+SD_MODEL_PATH=/absolute/path/v1-5-pruned-emaonly.ckpt python app.py
 ```
 
-Di notebook:
+`SD_VOCAB_PATH` and `SD_MERGES_PATH` can override the tokenizer paths in the
+same way. Missing files are reported in the UI with their expected locations.
 
-1. Jalankan cell pertama untuk setup path, device, tokenizer, dan load model.
-2. Jalankan cell `Image to Image` untuk memakai `images/dog.png` sebagai input.
-3. Jalankan cell `TEXT-TO-IMAGE` untuk generate dari prompt saja.
+Security note: `sd/model_converter.py` uses
+`torch.load(..., weights_only=False)`. Only load a checkpoint from a source you
+trust.
 
-Output akan disimpan ke folder `outputs/` dengan nama bertimestamp, misalnya:
+## Run the App
+
+From the repository root:
+
+```bash
+python app.py
+```
+
+Open the local URL printed by Gradio, normally `http://127.0.0.1:7860`. The
+checkpoint is loaded once when the first valid generation is requested. A
+successful result is displayed in the UI and saved as a collision-resistant PNG
+under `outputs/`.
+
+Default settings are intentionally lightweight:
 
 ```text
-outputs/img2img_20260825_140805.png
-outputs/txt2img_20260825_141000.png
+resolution:       256 x 256
+inference steps:  10
+strength:         0.60
+CFG:              disabled
+CFG scale:        7.5 when enabled
+seed:             42
+sampler:          DDPM
 ```
 
-Hasil juga ditampilkan langsung di notebook dengan `display(result)`.
+CFG commonly improves prompt adherence but roughly doubles the U-Net batch for
+this pipeline, increasing compute and memory use.
 
-## Pengaturan Performa
+## Smoke-Test Mode
 
-Notebook saat ini memakai:
+Construct and launch the complete UI without loading or requiring the
+checkpoint:
 
-```python
-pipeline.WIDTH = 512
-pipeline.HEIGHT = 512
+```bash
+ROOMMORPH_SKIP_MODEL_LOAD=1 python app.py
 ```
 
-Untuk MacBook Air atau RAM terbatas, kalau lambat atau memory penuh, turunkan:
+The interface clearly marks inference as disabled. Generate validates the input
+and settings, then returns a disabled-mode message without fabricating an AI
+result.
 
-```python
-pipeline.WIDTH = 256
-pipeline.HEIGHT = 256
-pipeline.LATENTS_WIDTH = pipeline.WIDTH // 8
-pipeline.LATENTS_HEIGHT = pipeline.HEIGHT // 8
+For a non-blocking import check:
+
+```bash
+ROOMMORPH_SKIP_MODEL_LOAD=1 python -c "import app; print(type(app.demo).__name__)"
 ```
 
-Parameter yang paling terasa:
+## Device and Hardware Notes
 
-- `n_inference_steps`: makin besar, makin lama.
-- `do_cfg=True`: hasil biasanya lebih mengikuti prompt, tapi lebih berat.
-- `do_cfg=False`: lebih ringan untuk demo cepat.
-- `strength` pada image-to-image: makin tinggi, hasil makin jauh dari input.
+Runtime selection is CUDA first, then Apple MPS, then CPU. CPU is always the
+idle/offload device, including CPU-only execution.
+
+- Apple Silicon: MPS is used when the installed PyTorch build supports it.
+- NVIDIA: CUDA is used when available.
+- CPU: supported, but a single image can take several minutes or longer.
+- MacBook Air M3 with 8 GB: begin at 256, 10 steps, CFG off.
+- Hugging Face CPU Basic: use the same conservative defaults and a queue limit
+  of one; loading and generation can still be slow.
+- 512 resolution, more steps, and CFG can cause high memory pressure or a much
+  longer run.
+
+## Notebook Demo
+
+The original educational notebook remains available at `sd/demo.ipynb` and
+supports text-to-image and image-to-image experiments. Start Jupyter from the
+repository root:
+
+```bash
+jupyter notebook sd/demo.ipynb
+```
+
+The notebook uses the same files under `data/`. If you change its resolution,
+update `WIDTH`, `HEIGHT`, `LATENTS_WIDTH`, and `LATENTS_HEIGHT` together.
+
+## Example Gallery
+
+Curated before/after portfolio examples will be added later under `assets/`.
+See `assets/README.md` for privacy and naming guidance. Ordinary experiments
+belong in `outputs/` and remain untracked.
+
+## Known Limitations
+
+- The output is a visual concept, not a construction plan or photorealistic
+  guarantee.
+- Exact wall geometry, windows, doors, and furniture placement may change.
+- Image-to-image influences the full image; it is not inpainting and cannot
+  target one masked region.
+- The model works on a square center crop, so content near wide-image edges may
+  be removed.
+- Batch size is one and the only sampler is DDPM.
+- Stable Diffusion 1.5 can inherit biases and limitations from its training data.
 
 ## Troubleshooting
 
-### `No module named 'transformers'`
+### `No module named 'transformers'` or `No module named 'gradio'`
 
-Package `transformers` belum terinstall di kernel Jupyter yang aktif.
+Install dependencies with the exact interpreter used to launch the app:
 
 ```bash
-/opt/anaconda3/bin/python -m pip install transformers
+python -m pip install -r requirements.txt
 ```
 
-### ``vocab` and `merges` must be both be from memory or both filenames`
+### ``vocab` and `merges` must both be from memory or both filenames`
 
-Versi `transformers` baru memakai parameter:
-
-```python
-CLIPTokenizer(vocab=..., merges=...)
-```
-
-Bukan:
-
-```python
-CLIPTokenizer(vocab_file=..., merges_file=...)
-```
-
-Notebook sudah memakai format baru.
+Both tokenizer files must exist and be passed as filenames. The app supports the
+constructor names used by current Transformers 4.x and 5.x releases.
 
 ### `No module named 'pytorch_lightning'`
 
-Checkpoint `.ckpt` membutuhkan PyTorch Lightning saat dibaca oleh `torch.load`.
+Install `pytorch-lightning` in the active environment. It is included in
+`requirements.txt` because legacy checkpoint deserialization can need it.
 
-```bash
-/opt/anaconda3/bin/python -m pip install pytorch-lightning
-```
+### Generation runs out of memory
 
-### `CLIPTokenizer has no attribute batch_encode_plus`
+Use 256 resolution, disable CFG, reduce inference steps, close other memory-heavy
+applications, and restart the app after a failed run if memory is not released.
 
-API tokenizer lama sudah tidak tersedia di `transformers` baru. `sd/pipeline.py` sudah diperbarui agar memakai:
+### CPU generation looks stuck
 
-```python
-tokenizer(...).input_ids
-```
+Watch the terminal progress bar. The custom implementation is computation-heavy
+on CPU, and free CPU hardware may need several minutes for one small image.
 
-### Notebook terlihat masih loading setelah progress 100%
+## License and Model Attribution
 
-Pastikan notebook memakai `display(result)`, bukan `result.show()`. `result.show()` mencoba membuka aplikasi gambar eksternal di macOS dan bisa membuat cell terlihat menggantung.
+The pretrained model is Stable Diffusion 1.5 and remains subject to the license
+and usage terms supplied by its original model provider. Keep attribution and
+review those terms before publishing a hosted demo or generated portfolio work.
+Model files are not distributed by this repository and must not be committed.
 
-### Output seperti file lama
-
-Versi lama menyimpan semua hasil ke `outputs/demo_output.png`, sehingga file lama bisa tertimpa. Notebook sekarang memakai nama bertimestamp agar setiap run punya file baru.
-
-### Data tiba-tiba hilang
-
-Pastikan file model dan tokenizer masih ada di `data/`. Kalau folder sempat berubah nama atau file berpindah, cari ulang:
-
-```bash
-find /Users/acit/Documents /Users/acit/Downloads -name 'v1-5-pruned-emaonly.ckpt' -o -name 'vocab.json' -o -name 'merges.txt'
-```
-
-## Catatan
-
-Repo ini fokus untuk belajar cara kerja Stable Diffusion, bukan wrapper production. Implementasi saat ini:
-
-- batch size 1.
-- sampler `ddpm`.
-- text-to-image dan image-to-image.
-- checkpoint format Stable Diffusion v1.5 standard `.ckpt`.
+This repository currently has no root `LICENSE` file. Add an explicit code
+license before redistributing the project or accepting external contributions;
+the model-weight license is separate from the code license.

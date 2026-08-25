@@ -3,7 +3,14 @@ data/
 images/
 
 __pycache__/
+*.py[cod]
 
 .DS_Store
 
 outputs/
+
+*.ckpt
+*.safetensors
+
+.venv/
+venv/

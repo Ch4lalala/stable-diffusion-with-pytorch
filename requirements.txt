@@ -1,0 +1,7 @@
+torch>=2.2,<3
+numpy>=1.26,<3
+Pillow>=10,<13
+transformers>=4.40,<6
+tqdm>=4.66,<5
+gradio>=5,<7
+pytorch-lightning>=2.2,<3
