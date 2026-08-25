@@ -1,18 +1,24 @@
+# Local model/tokenizer files
 data/
-
-images/
-
-__pycache__/
-*.py[cod]
-
-.DS_Store
-
-outputs/
-
 *.ckpt
 *.safetensors
+*.pt
+*.pth
 
+# Notebook scratch inputs
+images/
+
+# Python and operating-system artifacts
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# Ordinary generated images
+outputs/
+
+# Virtual environments
 .venv/
 venv/
 
+# Local implementation brief
 CODEX_ROOMMORPH_IMPLEMENTATION_BRIEF.md

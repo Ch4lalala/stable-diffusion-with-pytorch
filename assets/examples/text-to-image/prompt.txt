@@ -1,0 +1,12 @@
+Positive prompt:
+professional wide-angle interior photograph of a cozy Japandi bedroom, low
+platform bed, warm oak furniture, beige linen bedding, textured plaster walls,
+large window, soft morning sunlight, indoor plants, uncluttered layout, natural
+colors, realistic materials, symmetrical composition, highly detailed,
+photorealistic
+
+Negative prompt:
+text, watermark, signature, blurry, distorted perspective, deformed furniture
+
+Recorded parameters:
+resolution=512, inference_steps=50, cfg_scale=8.0, seed=42, sampler=DDPM

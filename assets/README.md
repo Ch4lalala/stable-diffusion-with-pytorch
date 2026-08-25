@@ -1,15 +1,17 @@
 # Portfolio Assets
 
-Place only curated RoomMorph AI screenshots and comparison images in this
-directory. Keep ordinary generated images in `outputs/`; that directory is
-ignored by Git.
+Only reviewed examples intended for the public portfolio belong under
+`assets/examples/`. Ordinary generations stay in `outputs/`, which is ignored by
+Git.
 
-Before committing a curated asset:
+Before adding or replacing a curated example:
 
-- confirm that the source room photo can be shared publicly;
+- confirm publication rights for every source image;
 - remove personal or location-identifying details;
-- use a descriptive filename such as `japandi-before-after.png`;
-- optimize the image size for the README or portfolio page.
+- use a descriptive, stable filename rather than the generated timestamp;
+- record prompts, parameters, device, and elapsed time when available;
+- optimize file size without presenting a recompressed image as raw output.
 
-No generated example is included yet. A future gallery should clearly label the
-original photograph, selected preset, settings, and generated concept.
+The current gallery and its recorded metadata are indexed in
+[`examples/README.md`](examples/README.md). Missing historical parameters are
+identified explicitly instead of being inferred from appearance.
