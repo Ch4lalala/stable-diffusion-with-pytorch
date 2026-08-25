@@ -2,8 +2,6 @@
 
 Implementasi Stable Diffusion sederhana dengan PyTorch. Repo ini memuat komponen inti model di folder `sd/`, loader untuk checkpoint Stable Diffusion v1.5, serta notebook demo untuk text-to-image dan image-to-image.
 
-Branch saat ini: `demo/mac-air-m3`.
-
 ## Struktur Project
 
 ```text
