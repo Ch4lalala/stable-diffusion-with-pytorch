@@ -307,26 +307,6 @@ No deployment configuration or hosted instance is included in this release.
 - Stable Diffusion 1.5 can reproduce biases and limitations from its training
   data.
 
-## Troubleshooting
-
-### `No module named 'transformers'` or `No module named 'gradio'`
-
-Install with the interpreter used to run the app:
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-### ``vocab` and `merges` must both be from memory or both filenames`
-
-Confirm that both tokenizer files exist. The model manager supports the
-constructor parameter names used by the supported Transformers versions.
-
-### `No module named 'pytorch_lightning'`
-
-Install `requirements.txt` in the active environment. PyTorch Lightning is
-included for trusted legacy checkpoint deserialization.
-
 ### Generation runs out of memory
 
 Use 256 x 256, reduce inference steps, and disable image-to-image CFG. Restart
