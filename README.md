@@ -364,8 +364,6 @@ design experience around that foundation.
 
 ## Model Attribution and License
 
-RoomMorph AI source code is released under the [MIT License](LICENSE).
-
 The pretrained model is Stable Diffusion 1.5 and remains subject to the license
 and usage terms supplied by its model provider. Model files are not distributed
 by this repository. The source-code license and model-weight license are
